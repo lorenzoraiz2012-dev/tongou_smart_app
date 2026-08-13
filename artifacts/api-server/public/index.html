@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#081b18" />
+    <meta name="description" content="Controllo sicuro del tuo interruttore smart Tuya." />
+    <title>Casa · Interruttore smart</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <a class="brand" href="./" aria-label="Casa, home">
+          <span class="brand-mark"><span></span><span></span></span>
+          <span>casa<span class="brand-dot">.</span></span>
+        </a>
+        <div class="connection" id="connection">
+          <span class="connection-dot"></span>
+          <span id="connection-label">Connessione in corso</span>
+        </div>
+      </header>
+
+      <section class="intro">
+        <p class="eyebrow">CONTROLLO DOMESTICO <span>///</span> 01</p>
+        <h1>Un gesto.<br /><em>La luce cambia.</em></h1>
+        <p class="intro-copy">
+          Controlla il tuo interruttore da qualsiasi luogo, con una connessione
+          diretta e sicura al cloud.
+        </p>
+      </section>
+
+      <section class="control-card" aria-labelledby="device-title">
+        <div class="card-topline">
+          <span class="device-type">INTERRUTTORE SMART</span>
+          <button class="icon-button" id="refresh-button" type="button" aria-label="Aggiorna stato">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 11a8.1 8.1 0 0 0-14.8-3L3 11m0 0V5m0 6h6M4 13a8.1 8.1 0 0 0 14.8 3L21 13m0 0v6m0-6h-6" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="device-heading">
+          <div>
+            <h2 id="device-title">Interruttore principale</h2>
+            <p class="device-id" id="device-id">Dispositivo Tuya</p>
+          </div>
+          <span class="status-pill" id="status-pill">—</span>
+        </div>
+
+        <button class="toggle" id="toggle-button" type="button" aria-pressed="false" disabled>
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-label" id="toggle-label">Caricamento…</span>
+        </button>
+
+        <div class="card-footer">
+          <span>ULTIMO AGGIORNAMENTO</span>
+          <time id="last-updated">—</time>
+        </div>
+      </section>
+
+      <div class="message" id="message" role="status" aria-live="polite" hidden></div>
+
+      <footer class="footer">
+        <span>PROTETTO DA TUYA IOT CLOUD</span>
+        <span class="footer-line"></span>
+        <span>HMAC-SHA256</span>
+      </footer>
+    </main>
+    <script src="app.js" defer></script>
+  </body>
+</html>
