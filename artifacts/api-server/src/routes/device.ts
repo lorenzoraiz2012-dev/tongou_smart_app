@@ -1,5 +1,10 @@
 import { Router, type IRouter } from "express";
-import { getDeviceState, setDeviceState } from "../lib/tuya";
+import {
+  getDeviceState,
+  setDeviceState,
+  TuyaApiError,
+  TuyaCommandError,
+} from "../lib/tuya";
 
 const router: IRouter = Router();
 
@@ -31,7 +36,25 @@ router.post("/device/toggle", async (req, res) => {
 
     res.json(await setDeviceState(nextState, current.switchCode));
   } catch (error) {
-    req.log.error({ err: error }, "Unable to toggle Tuya device");
+    if (error instanceof TuyaCommandError) {
+      req.log.error(
+        {
+          err: error,
+          tuyaAttempts: error.attempts,
+        },
+        "Unable to toggle Tuya device: all command codes failed",
+      );
+    } else if (error instanceof TuyaApiError) {
+      req.log.error(
+        {
+          err: error,
+          tuya: error.details,
+        },
+        "Unable to toggle Tuya device: Tuya API error",
+      );
+    } else {
+      req.log.error({ err: error }, "Unable to toggle Tuya device");
+    }
     res.status(502).json({
       error: "DEVICE_TOGGLE_FAILED",
       message: "Impossibile cambiare lo stato dell'interruttore tramite Tuya.",

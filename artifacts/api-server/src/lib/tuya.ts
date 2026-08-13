@@ -20,7 +20,10 @@ type TuyaTokenResult = {
 type TuyaDeviceStatusResult = TuyaStatusItem[];
 
 type TuyaCommandResult = boolean;
-type SwitchCode = "switch_1" | "switch_led";
+type TuyaDeviceFunctionsResult =
+  | { functions?: Array<{ code?: string }> }
+  | Array<{ code?: string }>;
+export type SwitchCode = "switch_1" | "switch_led" | "switch";
 
 type TuyaConfig = {
   accessId: string;
@@ -30,6 +33,41 @@ type TuyaConfig = {
 };
 
 let cachedToken: { value: string; expiresAt: number } | null = null;
+
+export class TuyaApiError extends Error {
+  readonly details: {
+    httpStatus: number;
+    method: string;
+    path: string;
+    success: boolean;
+    code?: number | string;
+    msg?: string;
+  };
+
+  constructor(
+    message: string,
+    details: TuyaApiError["details"],
+  ) {
+    super(message);
+    this.name = "TuyaApiError";
+    this.details = details;
+  }
+}
+
+export class TuyaCommandError extends Error {
+  readonly attempts: Array<{
+    code: SwitchCode;
+    error: ReturnType<typeof getTuyaErrorDetails>;
+  }>;
+
+  constructor(
+    attempts: TuyaCommandError["attempts"],
+  ) {
+    super("All supported Tuya switch command codes failed");
+    this.name = "TuyaCommandError";
+    this.attempts = attempts;
+  }
+}
 
 function getConfig(): TuyaConfig {
   const missing = [
@@ -104,12 +142,49 @@ function getTokenSign(
   return hmacSha256(`${accessId}${timestamp}${stringToSign}`, secret);
 }
 
-async function readTuyaResponse<T>(response: Response): Promise<TuyaResponse<T>> {
-  const payload = (await response.json()) as TuyaResponse<T>;
-  if (!response.ok) {
-    throw new Error(payload.msg ?? `Tuya returned HTTP ${response.status}`);
+async function readTuyaResponse<T>(
+  response: Response,
+  method: string,
+  path: string,
+): Promise<TuyaResponse<T>> {
+  const rawBody = await response.text();
+  let payload: TuyaResponse<T>;
+
+  try {
+    payload = JSON.parse(rawBody) as TuyaResponse<T>;
+  } catch {
+    payload = {
+      success: false,
+      msg: rawBody.slice(0, 1000) || "Tuya returned an empty response",
+    };
+  }
+
+  if (!response.ok || payload.success !== true) {
+    throw new TuyaApiError(
+      payload.msg ?? `Tuya returned HTTP ${response.status}`,
+      {
+        httpStatus: response.status,
+        method,
+        path,
+        success: payload.success,
+        code: payload.code,
+        msg: payload.msg,
+      },
+    );
   }
   return payload;
+}
+
+function getTuyaErrorDetails(error: unknown) {
+  if (error instanceof TuyaApiError) {
+    return error.details;
+  }
+
+  if (error instanceof Error) {
+    return { message: error.message };
+  }
+
+  return { message: String(error) };
 }
 
 async function getAccessToken(config: TuyaConfig) {
@@ -133,9 +208,13 @@ async function getAccessToken(config: TuyaConfig) {
       sign_method: "HMAC-SHA256",
     },
   });
-  const payload = await readTuyaResponse<TuyaTokenResult>(response);
+  const payload = await readTuyaResponse<TuyaTokenResult>(
+    response,
+    "GET",
+    path,
+  );
 
-  if (!payload.success || !payload.result?.access_token) {
+  if (!payload.result?.access_token) {
     throw new Error(payload.msg ?? `Tuya token request failed (${payload.code ?? "unknown"})`);
   }
 
@@ -174,12 +253,37 @@ async function tuyaRequest<T>(
     },
     body: body || undefined,
   });
-  const payload = await readTuyaResponse<T>(response);
-
-  if (!payload.success) {
-    throw new Error(payload.msg ?? `Tuya request failed (${payload.code ?? "unknown"})`);
-  }
+  const payload = await readTuyaResponse<T>(response, method, path);
   return payload.result as T;
+}
+
+async function getSupportedSwitchCodes(
+  config: TuyaConfig,
+  accessToken: string,
+) {
+  const path = `/v1.0/devices/${encodeURIComponent(config.deviceId)}/functions`;
+  const result = await tuyaRequest<TuyaDeviceFunctionsResult>(
+    config,
+    accessToken,
+    "GET",
+    path,
+  );
+  const functions = Array.isArray(result) ? result : result.functions ?? [];
+  const supported = new Set<SwitchCode>();
+
+  for (const item of functions) {
+    if (
+      item.code === "switch_1" ||
+      item.code === "switch_led" ||
+      item.code === "switch"
+    ) {
+      supported.add(item.code);
+    }
+  }
+
+  return ["switch_1", "switch_led", "switch"].filter((code) =>
+    supported.has(code as SwitchCode),
+  ) as SwitchCode[];
 }
 
 function parseSwitchValue(statuses: TuyaStatusItem[]) {
@@ -218,29 +322,69 @@ export async function getDeviceState() {
 
 export async function setDeviceState(
   isOn: boolean,
-  switchCode: SwitchCode = "switch_1",
+  preferredSwitchCode: SwitchCode = "switch_1",
 ) {
   const config = getConfig();
   const token = await getAccessToken(config);
-  const body = JSON.stringify({
-    commands: [{ code: switchCode, value: isOn }],
-  });
 
-  const result = await tuyaRequest<TuyaCommandResult>(
-    config,
-    token,
-    "POST",
-    `/v1.0/devices/${encodeURIComponent(config.deviceId)}/commands`,
-    body,
-  );
-
-  if (!result) {
-    throw new Error("Tuya did not confirm the command");
+  let discoveredCodes: SwitchCode[] = [];
+  const attempts: TuyaCommandError["attempts"] = [];
+  try {
+    discoveredCodes = await getSupportedSwitchCodes(config, token);
+  } catch (error) {
+    attempts.push({
+      code: preferredSwitchCode,
+      error: getTuyaErrorDetails(error),
+    });
   }
 
-  return {
-    isOn,
-    deviceId: config.deviceId,
-    updatedAt: new Date().toISOString(),
-  };
+  const candidates = [
+    preferredSwitchCode,
+    ...discoveredCodes,
+    "switch_1",
+    "switch_led",
+    "switch",
+  ].filter((code, index, all) => all.indexOf(code) === index) as SwitchCode[];
+  const path = `/v1.0/devices/${encodeURIComponent(config.deviceId)}/commands`;
+
+  for (const switchCode of candidates) {
+    const body = JSON.stringify({
+      commands: [{ code: switchCode, value: isOn }],
+    });
+
+    try {
+      const result = await tuyaRequest<TuyaCommandResult>(
+        config,
+        token,
+        "POST",
+        path,
+        body,
+      );
+
+      if (!result) {
+        throw new TuyaApiError("Tuya did not confirm the command", {
+          httpStatus: 200,
+          method: "POST",
+          path,
+          success: true,
+          code: "COMMAND_NOT_CONFIRMED",
+          msg: "Tuya returned success=false for the command result",
+        });
+      }
+
+      return {
+        isOn,
+        switchCode,
+        deviceId: config.deviceId,
+        updatedAt: new Date().toISOString(),
+      };
+    } catch (error) {
+      attempts.push({
+        code: switchCode,
+        error: getTuyaErrorDetails(error),
+      });
+    }
+  }
+
+  throw new TuyaCommandError(attempts);
 }
