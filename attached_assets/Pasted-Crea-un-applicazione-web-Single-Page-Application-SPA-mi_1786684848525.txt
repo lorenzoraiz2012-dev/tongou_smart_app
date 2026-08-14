@@ -1,0 +1,27 @@
+Crea un'applicazione web Single Page Application (SPA) minimale, moderna e con interfaccia scura per gestire un interruttore/contatore smart Tongou tramite le API OpenAPI di Tuya.
+DESIGN & PALETTE COLORI:
+ Usa una palette di colori scura basata su tonalità BLU NOTTE / ELETTRICO (accenti di colore blu/azzurro dinamico, sostituendo completamente il verde della preview iniziale).
+ L'interfaccia deve essere estremamente pulita, minimale, senza testi descrittivi inutili, box informativi o elementi di debug.
+ SCHERMATA DI CARICAMENTO (LOADER): Implementa uno spinner/rotella di caricamento elegante e animata al centro dello schermo ogni volta che l'app sta recuperando dati dal server o in attesa di risposta dal backend.
+1. ARCHITETTURA BACKEND (Express.js):
+ Server Node.js/Express che gestisca l'autenticazione HMAC-SHA256 per le API Tuya OpenAPI usando i Secrets di Replit (TUYA_ACCESS_ID, TUYA_ACCESS_SECRET, TUYA_ENDPOINT, TUYA_DEVICE_ID).
+ Endpoint GET /api/device/status: Recupera stato ON/OFF, stato online/offline, Smart Meter (tensione cur_voltage, corrente cur_current, potenza cur_power, frequenza freq), temperatura CPU/dispositivo e storico consumi (kWh).
+ Endpoint POST /api/device/toggle: Cambia lo stato dell'interruttore.
+ Endpoint POST /api/device/settings: Invia comandi per gestione schermo, protezioni, nome dispositivo e preferenze.
+1. FRONTEND - TAB 1: "HOME" (Dashboard):
+ Header minimale con il NOME DEL DISPOSITIVO personalizzato e indicatore di stato Wi-Fi/Online (Badge verde/rosso).
+ Controllo ON/OFF minimale per l'interruttore principale.
+ 5 Card con dati in tempo reale: Tensione (V), Corrente (A), Potenza Istantanea (W), Frequenza (Hz) e Temperatura CPU (°C).
+ Grafico interattivo dei consumi (con Chart.js da CDN) con filtri: Giorno, Mese, Anno, Totale + Pulsante per scaricare/esportare i dati in formato CSV.
+ BOX CALCOLATORE COSTI: Un riquadro vicino al grafico che mostra la stima dei costi (€) calcolati moltiplicando i kWh per il prezzo/kWh. Se non impostato, mostra "-- €" con invito ad impostarlo.
+ Sistema di Notifiche (Browser Notifications API + Audio): avvisi visivi e sonori in tempo reale per Tensione, Potenza o Temperatura fuori soglia.
+1. FRONTEND - TAB 2: "IMPOSTAZIONI":
+ Campo di input "Nome Dispositivo" per rinominare l'interruttore nella dashboard.
+ Campo di input per inserire il Prezzo dell'Energia (€/kWh) per il calcolo dei costi.
+ Selettore del Suono di Notifica (con scelta tra 3 toni diversi: Standard, Cyber Allarme, Soft Digital) + Pulsante per ascoltare l'anteprima audio.
+ Switch per Accensione/Spegnimento dello Schermo fisico.
+ Selector/Slider a 5 livelli per la Luminosità dello Schermo.
+ Campi di configurazione per le soglie di protezione (Sovratensione, Sottotensione, Sovra-alimentazione, Max Temperatura CPU).
+ Pulsante "Invia Notifica di Prova" per verificare le autorizzazioni e l'audio del browser.
+ Pulsante per il Reset dei Consumi Totali (con finestra/modale di conferma).
+Mantieni un design moderno, fluido e completamente reattivo sia da PC che da Smartphone.
