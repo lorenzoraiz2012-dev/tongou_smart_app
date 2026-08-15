@@ -1,6 +1,128 @@
 "use client"
 
 import * as React from "react"
+  function aggregateEnergyData(
+    rawLogs: { timestamp: string; kwh: number }[],
+    timeframe: "giorno" | "mese" | "anno" | "totale"
+  ) {
+    if (!rawLogs || rawLogs.length === 0) {
+      return [{ label: "N/D", kWh: 0 }];
+    }
+
+    // Ordiniamo i dati dal più vecchio al più recente
+    const sortedLogs = [...rawLogs].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    if (timeframe === "giorno") {
+      // GIORNO: Prendiamo i dati di oggi
+      const todayStr = new Date().toLocaleDateString();
+      const todayLogs = sortedLogs.filter(
+        (log) => new Date(log.timestamp).toLocaleDateString() === todayStr
+      );
+
+      if (todayLogs.length === 0) {
+        return [{ label: "Oggi", kWh: 0 }];
+      }
+
+      // Il consumo di oggi è la differenza tra l'ultima lettura di oggi e la prima lettura di oggi
+      const firstLogToday = todayLogs[0].kwh;
+      const lastLogToday = todayLogs[todayLogs.length - 1].kwh;
+      const consumedToday = Math.max(0, lastLogToday - firstLogToday);
+
+      return [{ label: "Oggi", kWh: Number(consumedToday.toFixed(2)) }];
+    }
+
+    if (timeframe === "mese") {
+      // MESE: Per ogni giorno del mese, calcoliamo (Max kWh del giorno - Min kWh del giorno)
+      const map = new Map<string, { min: number; max: number }>();
+
+      sortedLogs.forEach((log) => {
+        const dateKey = new Date(log.timestamp).toLocaleDateString("it-IT", {
+          day: "2-digit",
+          month: "2-digit",
+        });
+
+        if (!map.has(dateKey)) {
+          map.set(dateKey, { min: log.kwh, max: log.kwh });
+        } else {
+          const current = map.get(dateKey)!;
+          map.set(dateKey, {
+            min: Math.min(current.min, log.kwh),
+            max: Math.max(current.max, log.kwh),
+          });
+        }
+      });
+
+      return Array.from(map.entries()).map(([label, { min, max }]) => ({
+        label,
+        kWh: Number(Math.max(0, max - min).toFixed(2)),
+      }));
+    }
+
+    if (timeframe === "anno") {
+      // ANNO: Per ogni mese, calcoliamo (Max kWh del mese - Min kWh del mese)
+      const map = new Map<string, { min: number; max: number }>();
+
+      sortedLogs.forEach((log) => {
+        const monthKey = new Date(log.timestamp).toLocaleDateString("it-IT", {
+          month: "short",
+        });
+
+        if (!map.has(monthKey)) {
+          map.set(monthKey, { min: log.kwh, max: log.kwh });
+        } else {
+          const current = map.get(monthKey)!;
+          map.set(monthKey, {
+            min: Math.min(current.min, log.kwh),
+            max: Math.max(current.max, log.kwh),
+          });
+        }
+      });
+
+      return Array.from(map.entries()).map(([label, { min, max }]) => ({
+        label,
+        kWh: Number(Math.max(0, max - min).toFixed(2)),
+      }));
+    }
+
+    // TOTALE: Per ogni anno, calcoliamo (Max kWh dell'anno - Min kWh dell'anno)
+    const map = new Map<string, { min: number; max: number }>();
+
+    sortedLogs.forEach((log) => {
+      const yearKey = new Date(log.timestamp).getFullYear().toString();
+
+      if (!map.has(yearKey)) {
+        map.set(yearKey, { min: log.kwh, max: log.kwh });
+      } else {
+        const current = map.get(yearKey)!;
+        map.set(yearKey, {
+          min: Math.min(current.min, log.kwh),
+          max: Math.max(current.max, log.kwh),
+        });
+      }
+    });
+
+    return Array.from(map.entries()).map(([label, { min, max }]) => ({
+      label,
+      kWh: Number(Math.max(0, max - min).toFixed(2)),
+    }));
+  }
+
+  // TOTALE: Mostra gli anni
+  const map = new Map<string, number>();
+  rawLogs.forEach((log) => {
+    const yearKey = new Date(log.timestamp).getFullYear().toString();
+    map.set(yearKey, (map.get(yearKey) || 0) + log.kwh);
+  });
+
+  return Array.from(map.entries()).map(([label, kWh]) => ({
+    label,
+    kWh: Number(kWh.toFixed(2)),
+  }));
+}
+
+
 import {
   ChevronDownIcon,
   ChevronLeftIcon,

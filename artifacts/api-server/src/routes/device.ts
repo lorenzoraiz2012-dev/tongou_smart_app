@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import {
   getDeviceState,
   setDeviceState,
+  setDeviceSettings,
   TuyaApiError,
   TuyaCommandError,
 } from "../lib/tuya";
@@ -10,7 +11,10 @@ const router: IRouter = Router();
 
 router.get("/device/status", async (req, res) => {
   try {
-    res.json(await getDeviceState());
+    const data = await getDeviceState();
+    req.log.info({ tuyaStatusCodes: data.statusCodes }, "Tuya status codes received");
+    const { statusCodes: _statusCodes, ...publicData } = data;
+    res.json(publicData);
   } catch (error) {
     req.log.error({ err: error }, "Unable to read Tuya device status");
     res.status(502).json({
@@ -58,6 +62,56 @@ router.post("/device/toggle", async (req, res) => {
     res.status(502).json({
       error: "DEVICE_TOGGLE_FAILED",
       message: "Impossibile cambiare lo stato dell'interruttore tramite Tuya.",
+    });
+  }
+});
+
+router.post("/device/settings", async (req, res) => {
+  try {
+    const settings = req.body ?? {};
+    const numericFields = [
+      "screenBrightness",
+      "overVoltage",
+      "underVoltage",
+      "overPower",
+      "maxTemperature",
+    ];
+    for (const field of numericFields) {
+      if (
+        settings[field] !== undefined &&
+        (typeof settings[field] !== "number" || !Number.isFinite(settings[field]))
+      ) {
+        res.status(400).json({
+          error: "INVALID_SETTING",
+          message: `${field} deve essere un numero valido.`,
+        });
+        return;
+      }
+    }
+    if (
+      settings.screenEnabled !== undefined &&
+      typeof settings.screenEnabled !== "boolean"
+    ) {
+      res.status(400).json({
+        error: "INVALID_SETTING",
+        message: "screenEnabled deve essere booleano.",
+      });
+      return;
+    }
+
+    res.json(await setDeviceSettings(settings));
+  } catch (error) {
+    if (error instanceof TuyaApiError) {
+      req.log.error(
+        { err: error, tuya: error.details },
+        "Unable to apply Tuya device settings",
+      );
+    } else {
+      req.log.error({ err: error }, "Unable to apply Tuya device settings");
+    }
+    res.status(502).json({
+      error: "DEVICE_SETTINGS_FAILED",
+      message: "Impossibile applicare le impostazioni al dispositivo Tuya.",
     });
   }
 });

@@ -3,76 +3,352 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#081b18" />
-    <meta name="description" content="Controllo sicuro del tuo interruttore smart Tuya." />
-    <title>Casa · Interruttore smart</title>
+    <meta name="theme-color" content="#070d1b" />
+    <meta
+      name="description"
+      content="Dashboard per il controllo del dispositivo smart."
+    />
+    <title>Smart Control</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="styles.css" />
+    <script
+      src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"
+      defer
+    ></script>
+    <script src="app.js" defer></script>
   </head>
   <body>
-    <main class="shell">
+    <div class="app-shell">
       <header class="topbar">
-        <a class="brand" href="./" aria-label="Casa, home">
-          <span class="brand-mark"><span></span><span></span></span>
-          <span>casa<span class="brand-dot">.</span></span>
+        <a class="brand" href="./" aria-label="Smart Control">
+          <span class="brand-mark"><i></i><i></i></span>
+          <span>smart<span>ctrl</span></span>
         </a>
-        <div class="connection" id="connection">
-          <span class="connection-dot"></span>
-          <span id="connection-label">Connessione in corso</span>
+        <div class="device-summary">
+          <strong id="device-name">Interruttore principale</strong>
+          <span class="online-badge" id="online-badge">
+            <i></i><span id="online-label">Connessione</span>
+          </span>
         </div>
       </header>
 
-      <section class="intro">
-        <p class="eyebrow">CONTROLLO DOMESTICO <span>///</span> 01</p>
-        <h1>Un gesto.<br /><em>La luce cambia.</em></h1>
-        <p class="intro-copy">
-          Controlla il tuo interruttore da qualsiasi luogo, con una connessione
-          diretta e sicura al cloud.
-        </p>
-      </section>
-
-      <section class="control-card" aria-labelledby="device-title">
-        <div class="card-topline">
-          <span class="device-type">INTERRUTTORE SMART</span>
-          <button class="icon-button" id="refresh-button" type="button" aria-label="Aggiorna stato">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M20 11a8.1 8.1 0 0 0-14.8-3L3 11m0 0V5m0 6h6M4 13a8.1 8.1 0 0 0 14.8 3L21 13m0 0v6m0-6h-6" />
-            </svg>
-          </button>
-        </div>
-
-        <div class="device-heading">
-          <div>
-            <h2 id="device-title">Interruttore principale</h2>
-            <p class="device-id" id="device-id">Dispositivo Tuya</p>
-          </div>
-          <span class="status-pill" id="status-pill">—</span>
-        </div>
-
-        <button class="toggle" id="toggle-button" type="button" aria-pressed="false" disabled>
-          <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          <span class="toggle-label" id="toggle-label">Caricamento…</span>
+      <nav class="tabs" aria-label="Sezioni">
+        <button class="tab is-active" type="button" data-tab="home">
+          Home
         </button>
+        <button class="tab" type="button" data-tab="settings">
+          Impostazioni
+        </button>
+      </nav>
 
-        <div class="card-footer">
-          <span>ULTIMO AGGIORNAMENTO</span>
-          <time id="last-updated">—</time>
-        </div>
-      </section>
+      <div
+        class="loader-overlay"
+        id="loader"
+        aria-live="polite"
+        aria-label="Caricamento"
+      >
+        <div class="loader-ring"></div>
+      </div>
 
-      <div class="message" id="message" role="status" aria-live="polite" hidden></div>
+      <main>
+        <section class="tab-panel is-visible" id="home-panel">
+          <div class="page-heading">
+            <div>
+              <span class="overline">STATO DISPOSITIVO</span>
+              <h1>Controllo <em>smart.</em></h1>
+            </div>
+            <button
+              class="refresh-button"
+              id="refresh-button"
+              type="button"
+              aria-label="Aggiorna dati"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M20 11a8.1 8.1 0 0 0-14.8-3L3 11m0 0V5m0 6h6M4 13a8.1 8.1 0 0 0 14.8 3L21 13m0 0v6m0-6h-6"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <section class="hero-control">
+            <div>
+              <span class="overline">INTERRUTTORE PRINCIPALE</span>
+              <h2 id="switch-state">—</h2>
+              <span class="muted" id="switch-code">—</span>
+            </div>
+            <button
+              class="power-toggle"
+              id="power-toggle"
+              type="button"
+              aria-pressed="false"
+              disabled
+            >
+              <span class="power-core">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 3v9m5.66-6.66a8 8 0 1 1-11.32 0" />
+                </svg>
+              </span>
+              <span id="power-label">—</span>
+            </button>
+          </section>
+
+          <section class="metric-grid" aria-label="Dati in tempo reale">
+            <article class="metric-card">
+              <span class="metric-label">Tensione</span>
+              <strong
+                ><span id="metric-voltage">—</span><small> V</small></strong
+              >
+              <span class="metric-mark">VOLT</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Corrente</span>
+              <strong
+                ><span id="metric-current">—</span><small> A</small></strong
+              >
+              <span class="metric-mark">AMP</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Potenza</span>
+              <strong><span id="metric-power">—</span><small> W</small></strong>
+              <span class="metric-mark">WATT</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Frequenza</span>
+              <strong
+                ><span id="metric-frequency">—</span><small> Hz</small></strong
+              >
+              <span class="metric-mark">HERTZ</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Temperatura</span>
+              <strong
+                ><span id="metric-temperature">-</span
+                ><small> °C</small></strong
+              >
+              <span class="metric-mark">CPU / DEVICE</span>
+            </article>
+          </section>
+
+          <section class="analytics-grid">
+            <article class="panel cost-panel">
+              <!-- Il trucco del canvas invisibile per non bloccare l'app -->
+              <canvas id="consumption-chart" style="display: none"></canvas>
+
+              <!-- Stessa classe usata per "STIMA COSTI" -->
+              <span class="overline">CONSUMO TOTALE</span>
+
+              <!-- Stesso tag h2 che genera l'azzurro, con l'ID fondamentale per i dati -->
+              <h2>
+                <span id="total-kwh">-</span>
+                <span
+                  style="font-size: 0.5em; font-weight: normal; opacity: 0.8"
+                  >kWh</span
+                >
+              </h2>
+
+              <!-- Stessa classe usata per il testo descrittivo in basso -->
+              <span class="muted">Energia Registrata</span>
+            </article>
+            <aside class="panel cost-panel">
+              <span class="overline">STIMA COSTI</span>
+              <h2 id="cost-value">— €</h2>
+              <span class="muted" id="cost-caption"
+                >Imposta il prezzo per kWh</span
+              >
+              <button
+                class="text-button"
+                type="button"
+                data-tab-target="settings"
+              >
+                Configura prezzo <span>→</span>
+              </button>
+            </aside>
+          </section>
+        </section>
+
+        <section class="tab-panel" id="settings-panel" hidden>
+          <div class="page-heading">
+            <div>
+              <span class="overline">CONFIGURAZIONE</span>
+              <h1>Le tue <em>preferenze.</em></h1>
+            </div>
+          </div>
+
+          <form class="settings-form" id="settings-form">
+            <section class="panel settings-section">
+              <div class="section-title">
+                <span class="overline">IDENTITÀ</span>
+                <h2>Dispositivo</h2>
+              </div>
+              <label class="field">
+                <span>Nome dispositivo</span>
+                <input
+                  id="setting-device-name"
+                  name="deviceName"
+                  type="text"
+                  maxlength="48"
+                />
+              </label>
+              <label class="field">
+                <span>Prezzo energia <small>€/kWh</small></span>
+                <input
+                  id="setting-energy-price"
+                  name="energyPrice"
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  placeholder="0.25"
+                />
+              </label>
+            </section>
+
+            <section class="panel settings-section">
+              <div class="section-title">
+                <span class="overline">DISPLAY</span>
+                <h2>Schermo fisico</h2>
+              </div>
+              <label class="setting-row">
+                <span>
+                  <strong>Schermo acceso</strong>
+                  <small>Gestisci il display del dispositivo</small>
+                </span>
+                <input
+                  class="switch-input"
+                  id="setting-screen-enabled"
+                  name="screenEnabled"
+                  type="checkbox"
+                />
+                <span class="switch-ui"></span>
+              </label>
+              <label class="field range-field">
+                <span
+                  >Luminosità
+                  <output id="brightness-output">3 / 5</output></span
+                >
+                <input
+                  id="setting-brightness"
+                  name="screenBrightness"
+                  type="range"
+                  min="1"
+                  max="5"
+                  step="1"
+                />
+              </label>
+            </section>
+
+            <section class="panel settings-section">
+              <div class="section-title">
+                <span class="overline">NOTIFICHE</span>
+                <h2>Avvisi</h2>
+              </div>
+              <label class="field">
+                <span>Suono</span>
+                <span class="select-wrap">
+                  <select id="setting-sound" name="notificationSound">
+                    <option value="standard">Standard</option>
+                    <option value="cyber">Cyber allarme</option>
+                    <option value="soft">Soft digital</option>
+                  </select>
+                </span>
+              </label>
+              <button
+                class="outline-button wide-button"
+                id="preview-sound"
+                type="button"
+              >
+                Ascolta anteprima
+              </button>
+              <button
+                class="outline-button wide-button"
+                id="test-notification"
+                type="button"
+              >
+                Invia notifica di prova
+              </button>
+            </section>
+
+            <section class="panel settings-section">
+              <div class="section-title">
+                <span class="overline">PROTEZIONE</span>
+                <h2>Soglie di sicurezza</h2>
+              </div>
+              <div class="threshold-grid">
+                <label class="field"
+                  ><span>Sovratensione <small>V</small></span
+                  ><input
+                    id="setting-over-voltage"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                /></label>
+                <label class="field"
+                  ><span>Sottotensione <small>V</small></span
+                  ><input
+                    id="setting-under-voltage"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                /></label>
+                <label class="field"
+                  ><span>Sovra-alimentazione <small>W</small></span
+                  ><input
+                    id="setting-over-power"
+                    type="number"
+                    min="0"
+                    step="1"
+                /></label>
+                <label class="field"
+                  ><span>Max temperatura <small>°C</small></span
+                  ><input
+                    id="setting-max-temperature"
+                    type="number"
+                    min="0"
+                    step="1"
+                /></label>
+              </div>
+            </section>
+
+            <div class="form-actions">
+              <button class="primary-button" type="submit">
+                Salva impostazioni
+              </button>
+              <button
+                class="danger-button"
+                id="reset-consumption"
+                type="button"
+              >
+                Reset consumi
+              </button>
+            </div>
+          </form>
+        </section>
+      </main>
 
       <footer class="footer">
-        <span>PROTETTO DA TUYA IOT CLOUD</span>
-        <span class="footer-line"></span>
-        <span>HMAC-SHA256</span>
+        <span>SMART CONTROL</span><i></i><span id="last-updated">—</span>
       </footer>
-    </main>
-    <script src="app.js" defer></script>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+    <dialog class="confirm-dialog" id="reset-dialog">
+      <span class="overline">RESET DATI</span>
+      <h2>Azzerare i consumi?</h2>
+      <p>Lo storico locale verrà cancellato.</p>
+      <div class="dialog-actions">
+        <button class="outline-button" id="cancel-reset" type="button">
+          Annulla
+        </button>
+        <button class="danger-button" id="confirm-reset" type="button">
+          Conferma reset
+        </button>
+      </div>
+    </dialog>
   </body>
 </html>
