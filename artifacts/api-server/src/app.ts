@@ -4,7 +4,11 @@ import pinoHttp from "pino-http";
 import path from "node:path";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const app: Express = express();
 
 app.use(
