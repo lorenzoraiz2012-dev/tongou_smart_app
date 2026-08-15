@@ -461,7 +461,6 @@ $("#preview-sound").addEventListener("click", () =>
   playSound($("#setting-sound").value),
 );
 $("#test-notification").addEventListener("click", testNotification);
-$("#export-button").addEventListener("click", exportCsv);
 $("#reset-consumption").addEventListener("click", () =>
   $("#reset-dialog").showModal(),
 );
