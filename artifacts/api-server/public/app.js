@@ -234,9 +234,11 @@ function updateChart() {
   }
 }
 
-async function loadStatus() {
+async function loadStatus(showLoader = true) {
   try {
-    const data = await withLoader(() => request("/api/device/status"));
+    const data = showLoader
+      ? await withLoader(() => request("/api/device/status"))
+      : await request("/api/device/status");
     recordHistory(data);
     render(data);
   } catch (error) {
@@ -467,4 +469,5 @@ $("#cancel-reset").addEventListener("click", () => $("#reset-dialog").close());
 $("#confirm-reset").addEventListener("click", resetHistory);
 
 fillSettings();
-loadStatus();
+loadStatus(true);
+setInterval(() => loadStatus(false), 10000);
