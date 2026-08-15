@@ -328,9 +328,18 @@ function parsePhaseA(rawVal: unknown) {
       buf = Buffer.from(rawVal, "hex");
     }
 
-    if (buf.length >= 6) {
+    // Struttura standard Tuya 8 byte: Voltage (2b), Current (3b), Power (3b)
+    if (buf.length >= 8) {
       const voltage = buf.readUInt16BE(0) / 10;
       const current = ((buf[2] << 16) | (buf[3] << 8) | buf[4]) / 1000;
+      const power = (buf[5] << 16) | (buf[6] << 8) | buf[7]; // Inizia al byte 5!
+
+      return { voltage, current, power };
+    }
+    // Fallback per modelli a 6 byte
+    else if (buf.length >= 6) {
+      const voltage = buf.readUInt16BE(0) / 10;
+      const current = buf.readUInt16BE(2) / 1000;
       const power = buf.readUInt16BE(4);
 
       return { voltage, current, power };
