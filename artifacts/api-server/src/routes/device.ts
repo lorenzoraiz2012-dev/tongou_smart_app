@@ -10,7 +10,7 @@ import {
 const router: IRouter = Router();
 async function sendPushNotification(title: string, message: string) {
   try {
-    await fetch("https://ntfy.sh/tuya-allarmi-elettrici-9988", {
+    await fetch("https://ntfy.sh/tuya-allarmi-smart-meter", {
       // Sostituisci con il tuo canale ntfy
       method: "POST",
       headers: {
@@ -40,7 +40,7 @@ router.get("/device/status", async (req, res) => {
     const voltage = dataAny.voltage ?? dataAny.metrics?.voltage;
     const power = dataAny.power ?? dataAny.metrics?.power;
     const temperature = dataAny.temperature ?? dataAny.metrics?.temperature;
-    if (voltage && voltage > 200) {
+    if (voltage && voltage > 250) {
       await sendPushNotification(
         "⚡ Sovratensione!",
         `Tensione rilevata: ${voltage} V`,
