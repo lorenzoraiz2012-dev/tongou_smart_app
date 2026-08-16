@@ -8,12 +8,65 @@ import {
 } from "../lib/tuya";
 
 const router: IRouter = Router();
-
+async function sendPushNotification(title: string, message: string) {
+  try {
+    await fetch("https://ntfy.sh/tuya-allarmi-elettrici-9988", {
+      // Sostituisci con il tuo canale ntfy
+      method: "POST",
+      headers: {
+        Title: title,
+        Priority: "high",
+        Tags: "warning",
+      },
+      body: message,
+    });
+  } catch (error) {
+    console.error("Errore invio notifica push:", error);
+  }
+}
 router.get("/device/status", async (req, res) => {
   try {
     const data = await getDeviceState();
-    req.log.info({ tuyaStatusCodes: data.statusCodes }, "Tuya status codes received");
+    req.log.info(
+      { tuyaStatusCodes: data.statusCodes },
+      "Tuya status codes received",
+    );
     const { statusCodes: _statusCodes, ...publicData } = data;
+
+    // --- CONTROLLO SOGLIE E INVIO NOTIFICA PUSH ---
+    // Adatta i nomi delle proprietà (es. publicData.voltage o publicData.metrics.voltage) in base alla struttura reale
+    // Cast sicuro per far leggere i campi a TypeScript
+    const dataAny = publicData as any;
+    const voltage = dataAny.voltage ?? dataAny.metrics?.voltage;
+    const power = dataAny.power ?? dataAny.metrics?.power;
+    const temperature = dataAny.temperature ?? dataAny.metrics?.temperature;
+    if (voltage && voltage > 250) {
+      await sendPushNotification(
+        "⚡ Sovratensione!",
+        `Tensione rilevata: ${voltage} V`,
+      );
+    } else if (voltage && voltage < 200 && voltage > 0) {
+      await sendPushNotification(
+        "⚠️ Sottotensione!",
+        `Tensione rilevata: ${voltage} V`,
+      );
+    }
+
+    if (power && power > 3000) {
+      await sendPushNotification(
+        "🚨 Sovra-alimentazione!",
+        `Assorbimento: ${power} W`,
+      );
+    }
+
+    if (temperature && temperature > 70) {
+      await sendPushNotification(
+        "🔥 Temperatura Alta!",
+        `Temperatura: ${temperature} °C`,
+      );
+    }
+    // ----------------------------------------------
+
     res.json(publicData);
   } catch (error) {
     req.log.error({ err: error }, "Unable to read Tuya device status");
@@ -23,7 +76,6 @@ router.get("/device/status", async (req, res) => {
     });
   }
 });
-
 router.post("/device/toggle", async (req, res) => {
   try {
     let nextState = req.body?.state;
@@ -79,7 +131,8 @@ router.post("/device/settings", async (req, res) => {
     for (const field of numericFields) {
       if (
         settings[field] !== undefined &&
-        (typeof settings[field] !== "number" || !Number.isFinite(settings[field]))
+        (typeof settings[field] !== "number" ||
+          !Number.isFinite(settings[field]))
       ) {
         res.status(400).json({
           error: "INVALID_SETTING",
