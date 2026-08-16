@@ -40,7 +40,7 @@ router.get("/device/status", async (req, res) => {
     const voltage = dataAny.voltage ?? dataAny.metrics?.voltage;
     const power = dataAny.power ?? dataAny.metrics?.power;
     const temperature = dataAny.temperature ?? dataAny.metrics?.temperature;
-    if (voltage && voltage > 250) {
+    if (voltage && voltage > 200) {
       await sendPushNotification(
         "⚡ Sovratensione!",
         `Tensione rilevata: ${voltage} V`,
