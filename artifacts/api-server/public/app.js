@@ -469,4 +469,4 @@ $("#confirm-reset").addEventListener("click", resetHistory);
 
 fillSettings();
 loadStatus(true);
-setInterval(() => loadStatus(false), 10000);
+setInterval(() => loadStatus(false), 3000);
